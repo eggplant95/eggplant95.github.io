@@ -1,0 +1,529 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="详解kaldi中的egs – 以pybind分支为例引言    egs是Kaldi中定义的训练所需的样本存档，以chain模型为例，它由由chain_lib中的generate_chain_egs()函数生成，生成egs之后，调用chain_lib中的prepare_initial_acoustic_model()函数，生成初始的模型，最后通过train_one_iteration()函数对模型进">
+<meta property="og:type" content="article">
+<meta property="og:title" content="详解kaldi中的egs -- 以pybind分支为例">
+<meta property="og:url" content="http://example.com/2022/06/01/egs_in_kaldi/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="详解kaldi中的egs – 以pybind分支为例引言    egs是Kaldi中定义的训练所需的样本存档，以chain模型为例，它由由chain_lib中的generate_chain_egs()函数生成，生成egs之后，调用chain_lib中的prepare_initial_acoustic_model()函数，生成初始的模型，最后通过train_one_iteration()函数对模型进">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/06/01/egs_in_kaldi/chunk.png">
+<meta property="article:published_time" content="2022-06-01T09:20:21.000Z">
+<meta property="article:modified_time" content="2022-06-19T09:50:08.390Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="egs">
+<meta property="article:tag" content="pybind">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/2022/06/01/egs_in_kaldi/chunk.png">
+  
+  
+  <title>详解kaldi中的egs -- 以pybind分支为例 - Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4/github-markdown.min.css" />
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hint.css@2/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3/dist/jquery.fancybox.min.css" />
+  
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.14","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 6.2.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="详解kaldi中的egs -- 以pybind分支为例">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2022-06-01 09:20" pubdate>
+        2022年6月1日 上午
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      3.4k 字
+    </span>
+  
+
+  
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      29 分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">详解kaldi中的egs -- 以pybind分支为例</h1>
+            
+            <div class="markdown-body">
+              <h1 id="详解kaldi中的egs-–-以pybind分支为例"><a href="#详解kaldi中的egs-–-以pybind分支为例" class="headerlink" title="详解kaldi中的egs – 以pybind分支为例"></a>详解kaldi中的egs – 以pybind分支为例</h1><h3 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h3><blockquote>
+<div class="code-wrapper"><pre><code class="hljs">   egs是Kaldi中定义的训练所需的样本存档，以chain模型为例，它由由chain_lib中的generate_chain_egs()函数生成，生成egs之后，调用chain_lib中的prepare_initial_acoustic_model()函数，生成初始的模型，最后通过train_one_iteration()函数对模型进行训练。
+</code></pre></div>
+</blockquote>
+<h3 id="1-egs组成示例"><a href="#1-egs组成示例" class="headerlink" title="1. egs组成示例"></a>1. egs组成示例</h3><h4 id="kaldi-chain模型中的egs"><a href="#kaldi-chain模型中的egs" class="headerlink" title="kaldi chain模型中的egs"></a>kaldi chain模型中的egs</h4><blockquote>
+<p>AISHU_CONVERSATION_P8_F2F-CN-2018-04-18_00794_A_00653-117 <Nnet3ChainEg> <NumInputs> 2<br> 2 <NnetIo> input <I1V> 194 <I1> 0 -22 0 <I1> 0 -21 0 <I1> 0 -20 0 <I1> 0 -19 0 <I1> 0 -18 0 <I1> 0 -17 0 &lt;      I1&gt; 0 -16 0 <I1> 0 -15 0 <I1> 0 -14 0 <I1> 0 -13 0 <I1> 0 -12 0 <I1> 0 -11 0 <I1> 0 -10 0 <I1> 0 -9 0 &lt;I      1&gt; 0 -8 0 <I1> 0 -7 0 <I1> 0 -6 0 <I1> 0 -5 0 <I1> 0 -4 0 <I1> 0 -3 0 <I1> 0 -2 0 <I1> 0 -1 0 <I1> 0 0 0       <I1> 0 1 0 <I1> 0 2 0 <I1> 0 3 0 <I1> 0 4 0 <I1> 0 5 0 <I1> 0 6 0 <I1> 0 7 0 <I1> 0 8 0 <I1> 0 9 0 <I1>       0 10 0 <I1> 0 11 0 <I1> 0 12 0 <I1> 0 13 0 <I1> 0 14 0 <I1> 0 15 0 <I1> 0 16 0 <I1> 0 17 0 <I1> 0 18 0       <I1> 0 19 0 <I1> 0 20 0 <I1> 0 21 0 <I1> 0 22 0 <I1> 0 23 0 <I1> 0 24 0 <I1> 0 25 0 <I1> 0 26 0 <I1> 0 2      7 0 <I1> 0 28 0 <I1> 0 29 0 <I1> 0 30 0 <I1> 0 31 0 <I1> 0 32 0 <I1> 0 33 0 <I1> 0 34 0 <I1> 0 35 0 <I1>       0 36 0 <I1> 0 37 0 <I1> 0 38 0 <I1> 0 39 0 <I1> 0 40 0 <I1> 0 41 0 <I1> 0 42 0 <I1> 0 43 0 <I1> 0 44 0       <I1> 0 45 0 <I1> 0 46 0 <I1> 0 47 0 <I1> 0 48 0 <I1> 0 49 0 <I1> 0 50 0 <I1> 0 51 0 <I1> 0 52 0 <I1> 0 5      3 0 <I1> 0 54 0 <I1> 0 55 0 <I1> 0 56 0 <I1> 0 57 0 <I1> 0 58 0 <I1> 0 59 0 <I1> 0 60 0 <I1> 0 61 0 <I1>       0 62 0 <I1> 0 63 0 <I1> 0 64 0 <I1> 0 65 0 <I1> 0 66 0 <I1> 0 67 0 <I1> 0 68 0 <I1> 0 69 0 <I1> 0 70 0       <I1> 0 71 0 <I1> 0 72 0 <I1> 0 73 0 <I1> 0 74 0 <I1> 0 75 0 <I1> 0 76 0 <I1> 0 77 0 <I1> 0 78 0 <I1> 0 7      9 0 <I1> 0 80 0 <I1> 0 81 0 <I1> 0 82 0 <I1> 0 83 0 <I1> 0 84 0 <I1> 0 85 0 <I1> 0 86 0 <I1> 0 87 0 <I1>       0 88 0 <I1> 0 89 0 <I1> 0 90 0 <I1> 0 91 0 <I1> 0 92 0 <I1> 0 93 0 <I1> 0 94 0 <I1> 0 95 0 <I1> 0 96 0       <I1> 0 97 0 <I1> 0 98 0 <I1> 0 99 0 <I1> 0 100 0 <I1> 0 101 0 <I1> 0 102 0 <I1> 0 103 0 <I1> 0 104 0 <I1      > 0 105 0 <I1> 0 106 0 <I1> 0 107 0 <I1> 0 108 0 <I1> 0 109 0 <I1> 0 110 0 <I1> 0 111 0 <I1> 0 112 0 <I1> 0 113 0 <I1> 0 114 0 <I1> 0 115 0 <I1> 0 116 0 <I1> 0 117 0 <I1> 0 118 0 <I1> 0 119 0 <I1> 0 120 0 <I1> 0 121 0 <I1> 0 122 0 <I1> 0 123 0 <I1> 0 124 0 <I1> 0 125 0 <I1> 0 126 0 <I1> 0 127 0 <I1> 0 128 0 <I1> 0 129 0 <I1> 0 130 0 <I1> 0 131 0 <I1> 0 132 0 <I1> 0 133 0 <I1> 0 134 0 <I1> 0 135 0 <I1> 0 136 0 <I1> 0 137 0 <I1> 0 138 0 <I1> 0 139 0 <I1> 0 140 0 <I1> 0 141 0 <I1> 0 142 0 <I1> 0 143 0 <I1> 0 144 0 <I1> 0 145 0 <I1> 0 146 0 <I1> 0 147 0 <I1> 0 148 0 <I1> 0 149 0 <I1> 0 150 0 <I1> 0 151 0 <I1> 0 152 0 <I1      > 0 153 0 <I1> 0 154 0 <I1> 0 155 0 <I1> 0 156 0 <I1> 0 157 0 <I1> 0 158 0 <I1> 0 159 0 <I1> 0 160 0 <I1      > 0 161 0 <I1> 0 162 0 <I1> 0 163 0 <I1> 0 164 0 <I1> 0 165 0 <I1> 0 166 0 <I1> 0 167 0 <I1> 0 168 0 <I1      > 0 169 0 <I1> 0 170 0 <I1> 0 171 0  [</p>
+<p>(194*80) ]</p>
+</NnetIo>
+<NnetIo> ivector <I1V> 1 <I1> 0 0 0  [
+(1\*100) ]
+
+</NnetIo>
+<NumOutputs> 1
+<NnetChainSup> output <I1V> 50 <I1> 0 0 0 <I1> 0 3 0 <I1> 0 6 0 <I1> 0 9 0 <I1> 0 12 0 <I1> 0 15 0 <I1> 0 18 0 <I1> 0 21 0 <I1> 0 24 0 <I1> 0 27 0 <I1> 0 30 0 <I1> 0 33 0 <I1> 0 36 0 <I1> 0 39 0 <I1> 0 42 0 <I1> 0 45 0 <I1> 0 48 0 <I1> 0 51 0 <I1> 0 54 0 <I1> 0 57 0 <I1> 0 60 0 <I1> 0 63 0 <I1> 0 66 0 <I1> 0 69 0 <I1> 0 72 0 <I1> 0 75 0 <I1> 0 78 0 <I1> 0 81 0 <I1> 0 84 0 <I1> 0 87 0 <I1> 0 90 0 <I1> 0 93 0 <I1> 0 96 0 <I1> 0 99 0 <I1> 0 102 0 <I1> 0 105 0 <I1> 0 108 0 <I1> 0 111 0 <I1> 0 114 0 <I1> 0 117 0 <I1> 0 120 0 <I1> 0 123 0 <I1> 0 126 0 <I1> 0 129 0 <I1> 0 132 0 <I1> 0 135 0 <I1> 0 138 0 <I1> 0 141 0 <I1> 0 144 0 <I1> 0 147 0 <Supervision> <Weight> 1 <NumSequences> 1 <FramesPerSeq> 50 <LabelDim> 4848 <End2End> T <Fsts>
+0       10      1       1       50.40524
+0       10      87      87      50.4045
+0       3       121     121     48.43371
+0       15      166     166     49.71114
+...........
+
+<p></Fsts> <AlignmentPdfs> [ 205 2204 83 91 1 223 158 357 878 878 922 1219 1219 1219 1219 1913 1945 267 376 376 702 28 1381 1381 1381 1381 503 590 653 1391 1391 1391 1391 1391 28 503 590 590 0 86 90 155 155 28 1381 1381 503 590 590 590 ]<br></Supervision> <DW2>  [ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 ]<br></NnetChainSup>                           </p>
+</blockquote>
+<h4 id="pybind-chain模型中的egs"><a href="#pybind-chain模型中的egs" class="headerlink" title="pybind chain模型中的egs"></a>pybind chain模型中的egs</h4><p>原音频：BAC009S0002W0122  这步将音频分成多个chunk</p>
+<blockquote>
+<p>BAC009S0002W0122-0-29-150-29-v1 <Nnet3ChainEg> <NumInputs> 1<br><NnetIo> input <I1V> 208 <I1> 0 -29 0 <I1> 0 -28 0 <I1> 0 -27 0 <I1> 0 -26 0 <I1> 0 -25 0 <I1> 0 -24 0 <I1> 0 -23 0 <I1> 0 -22 0 &lt;I       1&gt; 0 -21 0 <I1> 0 -20 0 <I1> 0 -19 0 <I1> 0 -18 0 <I1> 0 -17 0 <I1> 0 -16 0 <I1> 0 -15 0 <I1> 0 -14 0 <I1> 0 -13 0 <I1> 0 -12 0 <I1> 0 -11 0 <I1> 0 -10 0 <I1> 0 -9 0 </p>
+<p><strong>….</strong></p>
+<p>177 0 <I1> 0 178 0  [</p>
+<p>(208*120)行数据    ]</p>
+</NnetIo>
+
+<p><NumOutputs> 1</p>
+<p><NnetChainSup> output <I1V> 50 <I1> 0 0 0 <I1> 0 3 0 <I1> 0 6 0 <I1> 0 9 0 <I1> 0 12 0 <I1> 0 15 0 <I1> 0 18 0 <I1> 0 21 0 <I1> 0 2       4 0 <I1> 0 27 0 <I1> 0 30 0 <I1> 0 33 0 <I1> 0 36 0 <I1> 0 <strong>….</strong></p>
+<p>111 0 <I1> 0 114 0 <I1> 0 117 0 <I1> 0 120        0 <I1> 0 123 0 <I1> 0 126 0 <I1> 0 129 0 <I1> 0 132 0 <I1> 0 135 0 <I1> 0 138 0 <I1> 0 141 0 <I1> 0 144 0 <I1> 0 147 0 <Supervision> <Weight> 1 <NumSequences> 1 <FramesPerSeq> 50 <LabelDim> 3480 <End2End> F<br>0       1       1       1       52.49311<br>1       2       68      68<br>2       3       68      68<br>3       4       68      68<br>4       5       68      68<br>5       6       68      68<br>6       7       68      68<br>7       8       68      68<br>8       9       68      68<br>9       10      68      68<br>10      11      68      68</p>
+<p>…</p>
+<p>…</p>
+<p></Supervision> <DW2>  [ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 ]<br></NnetChainSup></p>
+</blockquote>
+<h3 id="2-egs的可视化方法与构成"><a href="#2-egs的可视化方法与构成" class="headerlink" title="2. egs的可视化方法与构成"></a>2. egs的可视化方法与构成</h3><h5 id="1-可视化方法"><a href="#1-可视化方法" class="headerlink" title="1. 可视化方法"></a>1. 可视化方法</h5><p>在chain模型中利用<code>nnet3-chain-copy-egs</code>将ark文件转换成txt文件进行可视化。</p>
+<h5 id="2-内容构成"><a href="#2-内容构成" class="headerlink" title="2. 内容构成"></a>2. 内容构成</h5><p>主要包括两部分内容，一部分是特征数据，另一部分是监督信息</p>
+<ul>
+<li><p>特征数据</p>
+<ul>
+<li><NumInputs>代表输入的特征类型，如果为2代表输入为特征+ivector。</li>
+<li>神经网络的最小输入单位为一个chunk，由多帧构成，frames per chunk由自己设置，代表每一个chunk中含有30或37或50帧音频。</li>
+<li>由于tdnn网络需要上下文信息，因此一个chunk中还需要输入left和right的context。</li>
+</ul>
+<p><img src="/2022/06/01/egs_in_kaldi/chunk.png" srcset="/img/loading.gif" lazyload></p>
+</li>
+</ul>
+<p><em>以pybind中的egs文件为例，rows 代表29 + 3 * 50 + 29 &#x3D; 208， cols  &#x3D;  40 * 3 (40维度&#x3D;mfcc特征+2阶delta)&#x3D;120</em></p>
+<ul>
+<li>监督信息（supervisions）<ul>
+<li><NumSequences> : 这条ark文件中包含的chunk的个数，在chain模型中这个值为1，在pytorch版本中的kaldi这个值与minibatch_size一致。</li>
+<li><FramesPerSeq>: 每chunk（sequence）包含的帧数，监督信息中的内容与对应这些帧数对应。</li>
+<li><LabelDim>  : 决策树节点的个数，神经网络的输出节点个数</li>
+<li>FST信息：chain模型训练需要分子有限状态机和分母有限状态机，这里的信息就是这个chunk所对应的分子有限状态机。它从lat.*.gz中来，是一种compact lattice，五列数值分别对应的是，开始状态，结束状态，输入trans-id ,输出trans-id，（有的状态含有权重）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="3-kaldi-pybind中egs的构建过程"><a href="#3-kaldi-pybind中egs的构建过程" class="headerlink" title="3.kaldi-pybind中egs的构建过程"></a>3.kaldi-pybind中egs的构建过程</h3><ol>
+<li>Raw_egs: 音频按照chunk的需要分成碎片<ul>
+<li>每个音频索引上可以体现出选取的是音频的哪集帧</li>
+<li>一条ark文件代表一个chunk</li>
+</ul>
+</li>
+<li>Process_egs: 按照speaker将chunks合并，并按比例挑出训练集。然后局部打乱<ul>
+<li>每一条ark文件在组成上与上一步没有什么区别</li>
+<li>主要是将数据按照说话人聚集在一起 并且分出heldout_subset ，train_set 两个子集中的说话人也尽量分散</li>
+</ul>
+</li>
+<li>Randomrize_egs：将ark文件全局打乱<ul>
+<li>本质上只是对索引进行打乱，不生成新的文件</li>
+</ul>
+</li>
+<li>merge_egs: 将minibatch_size个数的chunk进行合并<ul>
+<li>此时的一条ark中包含多个chunk，也就是一个batch</li>
+</ul>
+</li>
+<li>Align_egs:  <ul>
+<li>为了ddp的计算，使得每个scp文件中的batch个数一致，会对齐每个scp文件的条目个数。</li>
+</ul>
+</li>
+</ol>
+<p>总结以上的过程，先生成多个chunk，合并minibatch_size个chunk为一个batch&#x3D;&gt; 把这些batch均匀的分给每个workers, 每个workers分到的batch就称为伪epoch&#x3D;&gt;多个伪epoch组成一个完整的epoch。</p>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/egs/">egs</a>
+                    
+                      <a class="hover-with-bg" href="/tags/pybind/">pybind</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/06/19/test/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">test</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2022/06/01/tdnn-f_network_in_kaldi/">
+                        <span class="hidden-mobile">kaldi中的tdnn-f网络</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  
+    <script  src="https://cdn.jsdelivr.net/npm/tocbot@4/dist/tocbot.min.js" ></script>
+  
+  
+    <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3/dist/jquery.fancybox.min.js" ></script>
+  
+  
+    <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4/anchor.min.js" ></script>
+  
+  
+    <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js" ></script>
+  
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+        typing(title);
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>

@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.png">
+  <link rel="icon" href="/img/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="John Doe">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="引言TDNN-F（F stands for Factorization)本质上是一种改进的TDNN(Time Delay Neural Networks)网络。TDNN网络实际上是最早的CNN网络，可以看作是1d-conv。Kaldi中的TDNN网络考虑了语音序列的上下文特性，并在每一层采用跳跃拼帧的方式降低实际的计算量，如图1所示，每一个单元为一帧，横轴代表时间序列，纵轴代表层深的递进。  ​">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kaldi中的tdnn-f网络">
+<meta property="og:url" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="引言TDNN-F（F stands for Factorization)本质上是一种改进的TDNN(Time Delay Neural Networks)网络。TDNN网络实际上是最早的CNN网络，可以看作是1d-conv。Kaldi中的TDNN网络考虑了语音序列的上下文特性，并在每一层采用跳跃拼帧的方式降低实际的计算量，如图1所示，每一个单元为一帧，横轴代表时间序列，纵轴代表层深的递进。  ​">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190712316.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/tdnn-f_network_in_kaldi/20201128190712316.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190739762.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190812704.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190825342.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190839505.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190907391.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190925641.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190943348.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128191023576.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/2020112819104640.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128191109210.png">
+<meta property="og:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128191121734.png">
+<meta property="article:published_time" content="2022-06-01T09:20:21.000Z">
+<meta property="article:modified_time" content="2022-06-19T09:50:08.390Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="tdnn-f">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="http://example.com/2022/06/01/tdnn-f_network_in_kaldi/20201128190712316.png">
+  
+  
+  <title>kaldi中的tdnn-f网络 - Hexo</title>
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/css/bootstrap.min.css" />
+
+
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@4/github-markdown.min.css" />
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hint.css@2/hint.min.css" />
+
+  
+    
+    
+      
+      <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@10/styles/github-gist.min.css" />
+    
+  
+
+  
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3/dist/jquery.fancybox.min.css" />
+  
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_ba1fz6golrf.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+<!-- 自定义样式保持在最底部 -->
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    var CONFIG = {"hostname":"example.com","root":"/","version":"1.8.14","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"right","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"copy_btn":true,"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+<meta name="generator" content="Hexo 6.2.0"></head>
+
+
+<body>
+  <header style="height: 70vh;">
+    <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Fluid</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/">
+                <i class="iconfont icon-tags-fill"></i>
+                标签
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+    <div class="banner" id="banner" parallax=true
+         style="background: url('/img/default.png') no-repeat center center;
+           background-size: cover;">
+      <div class="full-bg-img">
+        <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+          <div class="page-header text-center fade-in-up">
+            <span class="h2" id="subtitle" title="kaldi中的tdnn-f网络">
+              
+            </span>
+
+            
+              <div class="mt-3">
+  
+  
+    <span class="post-meta">
+      <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+      <time datetime="2022-06-01 09:20" pubdate>
+        2022年6月1日 上午
+      </time>
+    </span>
+  
+</div>
+
+<div class="mt-1">
+  
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-chart"></i>
+      1.5k 字
+    </span>
+  
+
+  
+    <span class="post-meta mr-2">
+      <i class="iconfont icon-clock-fill"></i>
+      
+      
+      13 分钟
+    </span>
+  
+
+  
+  
+</div>
+
+            
+          </div>
+
+          
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="d-none d-lg-block col-lg-2"></div>
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div class="py-5" id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">kaldi中的tdnn-f网络</h1>
+            
+            <div class="markdown-body">
+              <h2 id="引言"><a href="#引言" class="headerlink" title="引言"></a>引言</h2><div class="code-wrapper"><pre><code class="hljs">TDNN-F（F stands for Factorization)本质上是一种改进的TDNN(Time Delay Neural Networks)网络。TDNN网络实际上是最早的CNN网络，可以看作是1d-conv。Kaldi中的TDNN网络考虑了语音序列的上下文特性，并在每一层采用跳跃拼帧的方式降低实际的计算量，如图1所示，每一个单元为一帧，横轴代表时间序列，纵轴代表层深的递进。
+</code></pre></div>
+<p>​																									<img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190712316.png" srcset="/img/loading.gif" lazyload></p>
+<img src="tdnn-f_network_in_kaldi/20201128190712316.png" srcset="/img/loading.gif" lazyload>
+
+<p>​																														<strong>图一</strong> TDNN结构</p>
+<p>   Tdnn-f的改进之处有两个方面，第一是权重矩阵的分解，第二是增加残差连接。权重矩阵分解的目的是减少模型的参数两，具体实现是将一个大的权重矩阵，分解成两个小的权重矩阵，其中一个矩阵满足半正定约束。这样在减少模型参数的同时，还能一定程度上维持模型的建模能力，dan的论文中对于factorize如图二所示。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190739762.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																				<strong>图二 factorized的含义</strong></p>
+<p>因此在一层tdnnf中，存在一个瓶颈结构，类似于res-net结构，如图三。</p>
+<p>​																			<img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190812704.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																					<strong>图三 resnet结构</strong></p>
+<h2 id="1-kaldi中的tdnn-f"><a href="#1-kaldi中的tdnn-f" class="headerlink" title="1. kaldi中的tdnn-f"></a>1. kaldi中的tdnn-f</h2><p>在kaldi的源代码中，对于一层tdnn-f网络的构成解释如下图四，假设这一层的输入是tdnnf5的output，那么tdnnf6实际上是由一个linear层（与左-3时刻拼帧，节点维度由1024变成128），一个affine层（与右3帧拼帧，节点由128变成1024），再加上残差连接层（bypass值为0.66）构成的，如图5所示。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190825342.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																										<strong>图</strong>4 </p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190839505.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																											<strong>图5</strong></p>
+<p>先不提残差连接的部分，tdnn结构中时间序列的变化可以用图6中所示表示，横轴体现的是以帧为单位的时间序列，纵轴是逐渐深入的层深。从最底层到最上层的连接关系的角度来看，左右两侧可以进行等价，这也就解释了kaldi中time-stride为3的含义。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190907391.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																					<strong>图6    time-stride的含义</strong></p>
+<p>kaldi中利用config文件对网络模型进行配置，一个12层的tdnn-f网络配置如下图7。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190925641.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																					<strong>图7 tdnnf的config文件</strong></p>
+<p>对于t&#x3D;0时刻的某一帧来说，送入这个网络需要提供相邻帧的上下文信息，也就是所谓的context，对于这样一个网络来说，左侧和右侧的context等于time-stride的加和，如下图8。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128190943348.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																								<strong>图8context的含义</strong></p>
+<p>可以看到，kaldi中的tdnnf也类似于1d-cnn，其中的time-stride含义类似于dilation的值，除了time-stride等于0的层，kernel的值都是3，stride值都是1。</p>
+<h2 id="2-pytorch实现的tdnnf"><a href="#2-pytorch实现的tdnnf" class="headerlink" title="2. pytorch实现的tdnnf"></a>2. pytorch实现的tdnnf</h2><p>pytorch-y kaldi中实现的tdnn-f如下图9所示，它本质上是两个1d-cnn。除了节点个数和bypass值以外，这里开放的参数是第一个cnn（半正定层）的kernel_size，以及第二个cnn的stride,也就是subsample_factor。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128191023576.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																									<strong>图9 实现结构</strong></p>
+<p>为了与kaldi中的tdnnf进行对比，在相同context的情况下，用蓝色的线表示pytorch-y kaldi中tdnnf的前向过程，如下图10。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/2020112819104640.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																						<strong>图10 两种实现的对比</strong></p>
+<p>这种方式中的context不像kaldi中time-stride那么直观，但是可以通过cnn中的感受野计算公式来进行计算。但是这是要把每层tdnn-f理解成stride&#x3D;subsampling factor的kernel size的一个1d-cnn。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128191109210.png" srcset="/img/loading.gif" lazyload></p>
+<p>其中$r_n$代表每一层的感受野，k代表kernel的值，$s_i$代表每一层的stride。最终得到的感受野等于左context+当前帧+右context，如下图11。</p>
+<p><img src="/2022/06/01/tdnn-f_network_in_kaldi/20201128191121734.png" srcset="/img/loading.gif" lazyload></p>
+<p>​																					<strong>图11 感受野的计算</strong></p>
+
+            </div>
+            <hr>
+            <div>
+              <div class="post-metas mb-3">
+                
+                
+                  <div class="post-meta">
+                    <i class="iconfont icon-tags"></i>
+                    
+                      <a class="hover-with-bg" href="/tags/tdnn-f/">tdnn-f</a>
+                    
+                  </div>
+                
+              </div>
+              
+                <p class="note note-warning">
+                  
+                    本博客所有文章除特别声明外，均采用 <a target="_blank" href="https://creativecommons.org/licenses/by-sa/4.0/deed.zh" rel="nofollow noopener noopener">CC BY-SA 4.0 协议</a> ，转载请注明出处！
+                  
+                </p>
+              
+              
+                <div class="post-prevnext">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/06/01/egs_in_kaldi/">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">详解kaldi中的egs -- 以pybind分支为例</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+          </article>
+        </div>
+      </div>
+    </div>
+    
+      <div class="d-none d-lg-block col-lg-2 toc-container" id="toc-ctn">
+        <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+      </div>
+    
+  </div>
+</div>
+
+<!-- Custom -->
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v"
+                 for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    
+  </main>
+
+  <footer class="text-center mt-5 py-3">
+  <div class="footer-content">
+     <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+  </div>
+  
+
+  
+
+  
+</footer>
+
+
+  <!-- SCRIPTS -->
+  
+  <script  src="https://cdn.jsdelivr.net/npm/nprogress@0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nprogress@0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://cdn.jsdelivr.net/npm/jquery@3/dist/jquery.min.js" ></script>
+<script  src="https://cdn.jsdelivr.net/npm/bootstrap@4/dist/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+<!-- Plugins -->
+
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+  
+
+
+
+  
+    <script  src="https://cdn.jsdelivr.net/npm/tocbot@4/dist/tocbot.min.js" ></script>
+  
+  
+    <script  src="https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@3/dist/jquery.fancybox.min.js" ></script>
+  
+  
+    <script  src="https://cdn.jsdelivr.net/npm/anchor-js@4/anchor.min.js" ></script>
+  
+  
+    <script defer src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js" ></script>
+  
+
+
+
+
+
+
+  <script  src="https://cdn.jsdelivr.net/npm/typed.js@2/lib/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var title = document.getElementById('subtitle').title;
+      
+        typing(title);
+      
+    })(window, document);
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 主题的启动项 保持在最底部 -->
+<script  src="/js/boot.js" ></script>
+
+
+</body>
+</html>
